@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import List, Dict
+import time
 
 # 加载 .env 文件中的环境变量
 load_dotenv()
@@ -30,27 +31,36 @@ class HelloAgentsLLM:
         调用大语言模型进行思考，并返回其响应。
         """
         print(f"🧠 正在调用 {self.model} 模型...")
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                stream=True,
-            )
-            
-            # 处理流式响应
-            print("✅ 大语言模型响应成功:")
-            collected_content = []
-            for chunk in response:
-                content = chunk.choices[0].delta.content or ""
-                print(content, end="", flush=True)
-                collected_content.append(content)
-            print()  # 在流式输出结束后换行
-            return "".join(collected_content)
+        max_retries = 1  # 最多重试一次
+    
+        for attempt in range(max_retries + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    stream=True,
+                )
+                
+                # 处理流式响应
+                print("✅ 大语言模型响应成功:")
+                collected_content = []
+                for chunk in response:
+                    content = chunk.choices[0].delta.content or ""
+                    print(content, end="", flush=True)
+                    collected_content.append(content)
+                print()  # 在流式输出结束后换行
+                return "".join(collected_content)
 
-        except Exception as e:
-            print(f"❌ 调用LLM API时发生错误: {e}")
-            return None
+            except Exception as e:
+                error_message = str(e)
+                if "Error code: 429" in error_message and attempt < max_retries:
+                    print(f"⚠️  遇到429错误，将在1秒后重试... (尝试 {attempt + 1}/{max_retries})")
+                    time.sleep(1)  # 等待1秒后重试
+                    continue
+                else:
+                    print(f"❌ 调用LLM API时发生错误: {e}")
+                    return None
 
 # --- 客户端使用示例 ---
 if __name__ == '__main__':
