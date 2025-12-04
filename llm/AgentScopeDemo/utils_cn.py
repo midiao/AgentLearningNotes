@@ -36,7 +36,7 @@ def majority_vote_cn(votes: Dict[str, str]) -> tuple[str, int]:
         return "无人", 0
 
     vote_counts = Counter(votes.values())
-    most_voted = vote_counts.most_common(1)(0)
+    most_voted = vote_counts.most_common(1)[0]
 
     return most_voted[0], most_voted[1]  
 
